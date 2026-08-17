@@ -97,6 +97,8 @@
       "@deepseek-ai/dsh-agent/invariant": ["./packages/core/agent/src/invariant.ts"],
       "@deepseek-ai/dsh-scope/invariant": ["./packages/core/scope/src/invariant.ts"],
       "@deepseek-ai/dsh-agent-loop/invariant": ["./packages/core/agent-loop/src/invariant.ts"],
+      "@deepseek-ai/dsh-bash-git": ["./packages/shell/bash-git/src/index.ts"],
+      "@deepseek-ai/dsh-bash-sandbox/helpers": ["./packages/shell/bash-sandbox/src/helpers.ts"],
       "@deepseek-ai/dsh-*/invariant": [
         "./packages/core/*/src/invariant.ts",
         "./packages/prompt/*/src/invariant.ts",

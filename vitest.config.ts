@@ -26,6 +26,7 @@ const windowsUnsupportedPackages = process.platform === 'win32'
       // This explicit list (not a 'packages/shell/*' glob) keeps
       // packages/shell/shell — the Service Definition package — running on Windows.
       'packages/shell/bash-local',
+      'packages/shell/bash-git',
       'packages/shell/bash-sandbox',
       'packages/shell/tool-bash',
       'packages/hooks/*',
