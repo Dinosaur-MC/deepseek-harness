@@ -66,6 +66,7 @@
       "@deepseek-ai/dsh-plan-mode/client": ["./packages/plan/plan-mode/src/client.ts"],
       "@deepseek-ai/dsh-agent-presets/types": ["./packages/preset/agent-presets/src/types.ts"],
       "@deepseek-ai/dsh-pwsh-local": ["./packages/shell/pwsh-local/src/index.ts"],
+      "@deepseek-ai/dsh-sandbox-local/profiles": ["./packages/sandbox/sandbox-local/src/profiles.ts"],
       "@deepseek-ai/dsh-tool-pwsh": ["./packages/shell/tool-pwsh/src/index.ts"],
       "@deepseek-ai/dsh-shell-env": ["./packages/shell/shell-env/src/index.ts"],
       "@deepseek-ai/dsh-cordis-host-runner": ["./packages/extensions/cordis-host-runner/src/index.ts"],
@@ -98,6 +99,7 @@
       "@deepseek-ai/dsh-scope/invariant": ["./packages/core/scope/src/invariant.ts"],
       "@deepseek-ai/dsh-agent-loop/invariant": ["./packages/core/agent-loop/src/invariant.ts"],
       "@deepseek-ai/dsh-bash-git": ["./packages/shell/bash-git/src/index.ts"],
+      "@deepseek-ai/dsh-bash-wsl": ["./packages/shell/bash-wsl/src/index.ts"],
       "@deepseek-ai/dsh-bash-sandbox/helpers": ["./packages/shell/bash-sandbox/src/helpers.ts"],
       "@deepseek-ai/dsh-*/invariant": [
         "./packages/core/*/src/invariant.ts",
