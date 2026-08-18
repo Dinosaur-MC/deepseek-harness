@@ -153,6 +153,12 @@ importers:
       '@deepseek-ai/dsh-base':
         specifier: workspace:^
         version: link:../../packages/bundle/base
+      '@deepseek-ai/dsh-bash-git':
+        specifier: workspace:^
+        version: link:../../packages/shell/bash-git
+      '@deepseek-ai/dsh-bash-wsl':
+        specifier: workspace:^
+        version: link:../../packages/shell/bash-wsl
       '@deepseek-ai/dsh-client-ui-agent-preset':
         specifier: workspace:^
         version: link:../../packages/client/ui-agent-preset
@@ -222,6 +228,9 @@ importers:
       '@deepseek-ai/dsh-session-reference':
         specifier: workspace:^
         version: link:../../packages/context/session-reference
+      '@deepseek-ai/dsh-shell-select':
+        specifier: workspace:^
+        version: link:../../packages/shell/shell-select
       '@deepseek-ai/dsh-skill':
         specifier: workspace:^
         version: link:../../packages/skill/skill
@@ -1007,9 +1016,15 @@ importers:
       '@deepseek-ai/dsh-attachment-local':
         specifier: workspace:^
         version: link:../../attachment/attachment-local
+      '@deepseek-ai/dsh-bash-git':
+        specifier: workspace:^
+        version: link:../../shell/bash-git
       '@deepseek-ai/dsh-bash-sandbox':
         specifier: workspace:^
         version: link:../../shell/bash-sandbox
+      '@deepseek-ai/dsh-bash-wsl':
+        specifier: workspace:^
+        version: link:../../shell/bash-wsl
       '@deepseek-ai/dsh-command-compact':
         specifier: workspace:^
         version: link:../../compaction/command-compact
@@ -1109,6 +1124,9 @@ importers:
       '@deepseek-ai/dsh-shell-env':
         specifier: workspace:^
         version: link:../../shell/shell-env
+      '@deepseek-ai/dsh-shell-select':
+        specifier: workspace:^
+        version: link:../../shell/shell-select
       '@deepseek-ai/dsh-skill':
         specifier: workspace:^
         version: link:../../skill/skill
@@ -1417,6 +1435,9 @@ importers:
       '@deepseek-ai/dsh-session-stats':
         specifier: workspace:^
         version: link:../../session/session-stats
+      '@deepseek-ai/dsh-shell-select':
+        specifier: workspace:^
+        version: link:../../shell/shell-select
       '@deepseek-ai/dsh-storage':
         specifier: workspace:^
         version: link:../../storage/storage

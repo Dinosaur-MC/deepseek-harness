@@ -49,6 +49,17 @@
   name: '@deepseek-ai/dsh-tool-pwsh'
   disabled: !!js process.platform !== 'win32'
 
+# The win32 bash-family tools over the shell-select host row; each tool name
+# selects its backend through request.shell. Executors stay host-plane (the
+# selector holds them as instances), exactly like tool-bash/tool-pwsh.
+- id: tool-bash-git
+  name: '@deepseek-ai/dsh-tool-bash/git-bash'
+  disabled: !!js process.platform !== 'win32'
+
+- id: tool-bash-wsl
+  name: '@deepseek-ai/dsh-tool-bash/wsl-bash'
+  disabled: !!js process.platform !== 'win32'
+
 # ── filesystem ──────────────────────────────────────────────────────────────
 
 # Both register into the host `tools` registry and provide nothing, so
