@@ -2,7 +2,7 @@
 
 English | [中文](shell.zh.md)
 
-The bash execution seam is split across a Service Definition ([dsh-shell](../../packages/shell/shell), `ctx.shell`), Service Providers ([dsh-bash-local](../../packages/shell/bash-local) and [dsh-bash-sandbox](../../packages/shell/bash-sandbox)), and Consumer ([dsh-tool-bash](../../packages/shell/tool-bash), the `bash` schema). Generic background-job ids, ownership, and controls live in [jobs.md](jobs.md); this seam returns a task-free process handle. Raw process-group mechanics live behind the [subprocess seam](subprocess.md).
+The bash execution seam is split across a Service Definition ([dsh-shell](../../packages/shell/shell), `ctx.shell`), Service Providers ([dsh-bash-local](../../packages/shell/bash-local), [dsh-bash-sandbox](../../packages/shell/bash-sandbox), and the win32 selector [dsh-shell-select](../../packages/shell/shell-select)), and Consumer ([dsh-tool-bash](../../packages/shell/tool-bash), the `bash` schema). Generic background-job ids, ownership, and controls live in [jobs.md](jobs.md); this seam returns a task-free process handle. Raw process-group mechanics live behind the [subprocess seam](subprocess.md).
 
 Source: [`packages/shell/shell/src/types.ts`](../../packages/shell/shell/src/types.ts)
 
@@ -23,6 +23,11 @@ The seam separates the **model-/plugin-facing request** (optional `workdir`/`tim
  */
 interface ShellExecRequest {
   command: string
+  /**
+   * Selector-executor routing: the backend name to route to; absent uses the
+   * wrapper's configured default. Ignored by single-backend executors.
+   */
+  shell?: string | undefined
   /** Working directory override (default: implementation-configured). */
   workdir?: string | undefined
   /** Timeout override in milliseconds (implementations cap it). */
@@ -95,8 +100,12 @@ interface ShellExecSpec {
   dshEnv?: DshEnvironment | undefined
   /** Resolved sandbox policy; ignored by executors that do not confine. */
   sandboxPolicy: SandboxExecutionPolicy | undefined
+  /** Wrapper-owned routing marker: the backend name selected by a selector executor's resolve(); other executors ignore it. */
+  shellBackend?: string | undefined
 }
 ```
+
+`ShellExecRequest.shell` routes multi-backend compositions: the win32 selector [dsh-shell-select](../../packages/shell/shell-select) fills `request.shell ?? config.default`, stamps the chosen name on the resolved spec as `shellBackend`, and delegates `run`/`start` to that backend; single-backend executors ignore both fields.
 
 `stdin` and `env` are trusted in-process plugin inputs and are not exposed by `dsh-tool-bash`. The local executor scrubs ambient credentials before merging explicit caller-supplied env. See [the bash-stdin-env Agent Note](../../.agents/notes/implemented/architecture/2026-06-30-bash-stdin-env-trusted-plugin-api.md).
 

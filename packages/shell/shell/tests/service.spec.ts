@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
+import { LocalBashExecutor } from '@deepseek-ai/dsh-bash-local'
 import { ShellExecutor } from '@deepseek-ai/dsh-shell'
 import type { ShellExecRequest, ShellExecSpec, ShellProcess, ShellProcessRead, ShellRunResult } from '@deepseek-ai/dsh-shell'
 
@@ -80,5 +81,14 @@ describe('ShellExecutor service seam', () => {
     await ctx.plugin(StubExecutor)
     class SecondExecutor extends StubExecutor {}
     await expect(ctx.plugin(SecondExecutor)).rejects.toThrow(/service "shell" has been registered/)
+  })
+
+  it('ignores the selector routing hint on a single-backend executor (shell never lands on the spec)', () => {
+    const ctx = new Context()
+    const executor = new LocalBashExecutor(ctx, LocalBashExecutor.Config({}))
+    const plain = executor.resolve({ command: 'echo hi' })
+    const routed = executor.resolve({ command: 'echo hi', shell: 'git-bash' })
+    expect(routed.shellBackend).toBeUndefined()
+    expect(routed).toEqual(plain)
   })
 })

@@ -53,24 +53,32 @@ describe('dsh-base bundle', () => {
         ? (patch as { insert?: Record<string, unknown>[] }).insert ?? []
         : [],
     )
-    // Symmetric gating: each stack's executor and tool rows carry the same
-    // platform fact, inverted between the bash and pwsh twins, so exactly one
-    // shell stack mounts per host. Evaluate with a platform-scoped context
-    // (the `with` scope shadows the global `process`) so both outcomes pin on
-    // every host.
+    // The selector replaces both sandbox executors on win32: bash-sandbox
+    // stays win32-disabled, pwsh-sandbox is disabled everywhere (its pwsh
+    // backend now lives inside the selector), and shell-select mounts on
+    // win32 only.
     for (const [id, win32, linux] of [
       ['bash-sandbox', true, false],
       ['tool-bash', true, false],
-      ['pwsh-sandbox', false, true],
+      ['pwsh-sandbox', true, true],
       ['tool-pwsh', false, true],
+      ['shell-select', false, true],
     ] as const) {
       const row = rows.find(candidate => candidate.id === id)
       if (row === undefined) throw new Error(`base patch must mount ${id}`)
+      if (id === 'pwsh-sandbox') {
+        // Statically disabled on every platform (replaced by the selector's
+        // pwsh backend partition on win32; never used on POSIX).
+        expect(row.disabled).toBe(true)
+        continue
+      }
       const expression = (row.disabled as { __jsExpr?: string } | undefined)?.__jsExpr
       if (expression === undefined) throw new Error(`${id} must gate on a !!js disabled expression`)
       expect(Boolean(evaluate({ process: { platform: 'win32' } }, expression)), `${id} on win32`).toBe(win32)
       expect(Boolean(evaluate({ process: { platform: 'linux' } }, expression)), `${id} on linux`).toBe(linux)
     }
+    const selector = rows.find(candidate => candidate.id === 'shell-select')
+    expect((selector?.config as { backends?: unknown } | undefined)?.backends).toEqual(['git-bash', 'wsl-bash', 'pwsh'])
     // The platform layer folded into these rows: no separate patch file ships.
     expect(existsSync(resolve(root, 'windows.cordis.patch.yml'))).toBe(false)
   })

@@ -84,6 +84,25 @@ export default class Fix {
     }))
     expect(entries[0]?.kind).toBe('no-config')
   })
+  it('classifies identifier re-exports of a factory-built plugin and extracts the factory fields', () => {
+    // The tool-bash pattern: `export const apply = tool.apply` etc., where
+    // `tool` is a local const from a factory call whose return object carries
+    // the plugin fields (name/inject/Config/apply).
+    const entries = collectConfigCatalog(make({
+      'src/factory.ts': "import type { Context } from '@deepseek-ai/cordis'\nimport z from '@deepseek-ai/schemastery'\n/** Fixture config. */\nexport interface Config {\n  /** A knob. */\n  knob?: string\n}\n/** Runtime schema. */\nexport const Config: z<Config> = z.object({ knob: z.string() })\n/** Build the fixture plugin object. */\nexport function defineFix() {\n  return {\n    name: 'fix',\n    inject: ['tools'],\n    Config,\n    apply(ctx: Context, config: Config = {}): void {},\n  }\n}\n",
+      'src/index.ts': "import { defineFix, type Config as FixConfig } from './factory.ts'\nconst fix = defineFix()\nexport const name = fix.name\nexport const inject = fix.inject\nexport const Config = fix.Config\nexport const apply = fix.apply\n/** The instance config type, kept exportable for typed plugin-forwarding consumers. */\nexport type Config = FixConfig\n",
+    }))
+    expect(entries[0]).toMatchObject({
+      pkg: '@fix/one',
+      kind: 'config',
+      configTypeName: 'Config',
+      inject: ['tools'],
+      schemaKeys: ['knob'],
+    })
+    // The apply signature lives in the factory module, so the pasted config
+    // type is the factory's interface.
+    expect(entries[0]?.pastes?.map(p => p.source)).toEqual(['packages/group/one/src/factory.ts:4'])
+  })
 
   it('classifies a module with neither default export nor apply as a library', () => {
     const entries = collectConfigCatalog(make({

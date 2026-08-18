@@ -51,13 +51,21 @@ describe('the shipped shell composition (real bundle layers)', () => {
     )
     const byId = new Map(rows.map(row => [row.id, row]))
     // One shared patch set, two rosters: the shell stacks gate themselves.
-    for (const id of ['bash-sandbox', 'pwsh-sandbox', 'tool-bash', 'tool-pwsh']) {
+    for (const id of ['bash-sandbox', 'pwsh-sandbox', 'shell-select', 'tool-bash', 'tool-pwsh']) {
       expect(byId.has(id), `row ${id}`).toBe(true)
     }
     expect(disabledOn(byId.get('bash-sandbox')!, 'win32'), 'bash-sandbox on win32').toBe(true)
     expect(disabledOn(byId.get('bash-sandbox')!, 'linux'), 'bash-sandbox on linux').toBe(false)
-    expect(disabledOn(byId.get('pwsh-sandbox')!, 'win32'), 'pwsh-sandbox on win32').toBe(false)
+    // pwsh-sandbox is statically disabled everywhere: its pwsh backend lives
+    // inside the selector on win32, and POSIX never used the row.
+    expect(disabledOn(byId.get('pwsh-sandbox')!, 'win32'), 'pwsh-sandbox on win32').toBe(true)
     expect(disabledOn(byId.get('pwsh-sandbox')!, 'linux'), 'pwsh-sandbox on linux').toBe(true)
+    // The selector occupies the win32 shell seat and the web overlay pins
+    // pwsh as the default route; POSIX keeps bash-sandbox directly.
+    expect(disabledOn(byId.get('shell-select')!, 'win32'), 'shell-select on win32').toBe(false)
+    expect(disabledOn(byId.get('shell-select')!, 'linux'), 'shell-select on linux').toBe(true)
+    expect(byId.get('shell-select')?.config)
+      .toMatchObject({ backends: ['git-bash', 'wsl-bash', 'pwsh'], default: 'pwsh' })
     // Host shell-tool rows are disabled on every platform; sessions mount
     // their own rows instead.
     expect(byId.get('tool-bash')?.disabled).toBe(true)
@@ -72,7 +80,7 @@ describe('the shipped shell composition (real bundle layers)', () => {
     // dependency closure into the profile's node_modules, so every bare
     // plugin name in the base patch must resolve from there.
     const cliManifest = JSON.parse(readFileSync(anchor, 'utf8')) as { dependencies?: Record<string, string> }
-    for (const name of ['@deepseek-ai/dsh-pwsh-sandbox', '@deepseek-ai/dsh-tool-pwsh']) {
+    for (const name of ['@deepseek-ai/dsh-pwsh-sandbox', '@deepseek-ai/dsh-tool-pwsh', '@deepseek-ai/dsh-shell-select']) {
       expect(cliManifest.dependencies?.[name], `cold-start closure must reach ${name}`).toBeDefined()
     }
     expect(warnings).toEqual([])
@@ -119,6 +127,24 @@ describe('shipped agent presets gate both shell tools by platform', () => {
       const expression = (row.disabled as { __jsExpr: string }).__jsExpr
       expect(Boolean(evaluate({ process: { platform: 'win32' } }, expression)), `${id} on win32`).toBe(win32)
       expect(Boolean(evaluate({ process: { platform: 'linux' } }, expression)), `${id} on linux`).toBe(!win32)
+    }
+  })
+
+  it('standard mounts the win32 bash-family tool rows over the selector', () => {
+    const entries: unknown = yaml.load(
+      readFileSync(join(presetRoot, 'standard', 'agent.cordis.yml'), 'utf8'),
+      { schema: entryListSchema },
+    )
+    if (!Array.isArray(entries)) throw new TypeError('standard preset must parse to an entry array')
+    for (const id of ['tool-bash-git', 'tool-bash-wsl']) {
+      const row = entries.find((entry): entry is Record<string, unknown> => (
+        typeof entry === 'object' && entry !== null && (entry as Record<string, unknown>).id === id
+      ))
+      if (row === undefined) throw new TypeError(`standard preset must mount ${id}`)
+      expect(row.disabled).toMatchObject({ __jsExpr: expect.any(String) as string })
+      const expression = (row.disabled as { __jsExpr: string }).__jsExpr
+      expect(Boolean(evaluate({ process: { platform: 'win32' } }, expression)), `${id} on win32`).toBe(false)
+      expect(Boolean(evaluate({ process: { platform: 'linux' } }, expression)), `${id} on linux`).toBe(true)
     }
   })
 

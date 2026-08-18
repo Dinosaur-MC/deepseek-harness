@@ -1,0 +1,44 @@
+# Minimal win32 multi-bash composition: real app boot path, the selector over
+# real backends, and the git_bash/wsl_bash tools; driven by the package's
+# windows-loader.spec.ts. Self-skips on hosts without Git Bash / WSL.
+- id: system-prompt
+  name: '@deepseek-ai/dsh-system-prompt'
+
+- id: tools
+  name: '@deepseek-ai/dsh-tools'
+
+- id: subprocess
+  name: '@deepseek-ai/dsh-subprocess-local'
+
+- id: sandbox
+  name: '@deepseek-ai/dsh-sandbox-local'
+
+- id: sandbox-policy
+  name: '@deepseek-ai/dsh-sandbox-policy'
+
+- id: shell-select
+  name: '@deepseek-ai/dsh-shell-select'
+  config:
+    backends: [git-bash, wsl-bash, pwsh]
+    default: pwsh
+    gitBash:
+      sandbox: none
+      graceMs: 200
+    wslBash:
+      sandbox: none
+      graceMs: 200
+
+- id: shell-env
+  name: '@deepseek-ai/dsh-shell-env'
+
+- id: tasks
+  name: '@deepseek-ai/dsh-jobs-local'
+
+- id: tool-jobs
+  name: '@deepseek-ai/dsh-tool-jobs'
+
+- id: tool-bash-git
+  name: '@deepseek-ai/dsh-tool-bash/git-bash'
+
+- id: tool-bash-wsl
+  name: '@deepseek-ai/dsh-tool-bash/wsl-bash'

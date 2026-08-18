@@ -183,7 +183,21 @@
 
     - id: pwsh-sandbox
       name: '@deepseek-ai/dsh-pwsh-sandbox'
+      # Replaced on win32 by the shell-select row's pwsh backend partition;
+      # mounting it beside the selector would duplicate the ctx.shell seat.
+      # Disabled rather than deleted so the row identity and dependency stay
+      # declared (the same reason the web surface disables host rows).
+      disabled: true
+
+    # win32 only: the selector occupies the single ctx.shell seat and holds
+    # git-bash / wsl-bash / pwsh as plain backend instances (see
+    # @deepseek-ai/dsh-shell-select). POSIX keeps bash-sandbox directly.
+    - id: shell-select
+      name: '@deepseek-ai/dsh-shell-select'
       disabled: !!js process.platform !== 'win32'
+      config:
+        backends: [git-bash, wsl-bash, pwsh]
+        # default stays the schema default (pwsh); web-app pins it explicitly.
 
     - id: approval
       name: '@deepseek-ai/dsh-user-approval'

@@ -62,6 +62,8 @@ flowchart LR
   cfg --> plugin_dsh_base_bash_sandbox
   plugin_dsh_base_pwsh_sandbox["pwsh-sandbox<br/>@deepseek-ai/dsh-pwsh-sandbox"]
   cfg --> plugin_dsh_base_pwsh_sandbox
+  plugin_dsh_base_shell_select["shell-select<br/>@deepseek-ai/dsh-shell-select"]
+  cfg --> plugin_dsh_base_shell_select
   plugin_dsh_base_approval["approval<br/>@deepseek-ai/dsh-user-approval"]
   cfg --> plugin_dsh_base_approval
   plugin_dsh_base_permission["permission<br/>@deepseek-ai/dsh-permission-presets"]
@@ -195,6 +197,7 @@ flowchart LR
 | `sandbox-policy` | `@deepseek-ai/dsh-sandbox-policy` |
 | `bash-sandbox` | `@deepseek-ai/dsh-bash-sandbox` |
 | `pwsh-sandbox` | `@deepseek-ai/dsh-pwsh-sandbox` |
+| `shell-select` | `@deepseek-ai/dsh-shell-select` |
 | `approval` | `@deepseek-ai/dsh-user-approval` |
 | `permission` | `@deepseek-ai/dsh-permission-presets` |
 | `shell-env` | `@deepseek-ai/dsh-shell-env` |

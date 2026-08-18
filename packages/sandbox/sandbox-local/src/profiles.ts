@@ -6,7 +6,10 @@
 
 import { grantArgs as landlockGrantArgs } from '@deepseek-ai/node-addon-landlock-run'
 import { writableRoots } from '@deepseek-ai/dsh-sandbox'
-import type { SandboxPolicy } from '@deepseek-ai/dsh-sandbox'
+import type { RunnerFailureRule, SandboxPolicy } from '@deepseek-ai/dsh-sandbox'
+
+/** Structured runner-failure evidence for the bwrap runner (shared with in-distro consumers). */
+export const BWRAP_RUNNER_FAILURE_RULES: readonly RunnerFailureRule[] = [{ fatalSignatures: ['bwrap: '] }]
 
 /**
  * Build the bwrap profile arguments for one file-effect policy.

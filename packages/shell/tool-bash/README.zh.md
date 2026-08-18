@@ -4,9 +4,9 @@
 
 模型侧 `bash` 工具，注册在 `ctx.shell` 执行器 seam 上。前台执行始终位于该 seam 之后；后台进程句柄会注册到通用 `ctx.jobs` 运行时，并通过 `job_output`、`job_list` 和 `job_kill` 控制；这些工具由 `@deepseek-ai/dsh-tool-jobs` 提供。
 
-需要加载执行器 Service Provider（例如 `@deepseek-ai/dsh-bash-local`）与 [`@deepseek-ai/dsh-shell-env`](../shell-env/README.md) 注册表；在每个注入服务就绪之前，插件会保持等待状态（`inject: ['tools', 'bash', 'systemPrompt', 'bashEnv']`）。工具约定是 bash 方言——请挂载能解析 bash 的执行器。
+需要加载执行器 Service Provider（例如 `@deepseek-ai/dsh-bash-local`）与 [`@deepseek-ai/dsh-shell-env`](../shell-env/README.md) 注册表；在每个注入服务就绪之前，插件会保持等待状态（`inject: ['tools', 'shell', 'systemPrompt', 'shellEnv']`）。工具约定是 bash 方言——请挂载能解析 bash 的执行器。
 
-包根只公开 Cordis 插件约定（`name`、`inject`、`Config`、`apply`）；结果渲染和后台进程适配仍保留在包内部。
+包根只公开 Cordis 插件约定（`name`、`inject`、`Config`、`apply`）；结果渲染和后台进程适配仍保留在包内部。`./git-bash` 与 `./wsl-bash` 子路径导出固定的 `git_bash`／`wsl_bash` 实例，插件约定相同；三个工具都由共享的 `defineShellTool` 工厂构建，仅在工具名、路由的 `request.shell` 与方言描述上不同。
 
 插件还会提供 `tool:bash` 提示词段落（顺序 105）：检查每个结果中的 `[exit code: N]` 标记，发现失败时先调查原因再继续。
 
@@ -25,6 +25,14 @@
 | `justification` | string | 必须与 `sandbox_permissions` 一同提供（缺少任一项都会产生验证错误）：用一句话向用户解释此命令为何需要这项更宽权限。 |
 
 执行前，`command`、`workdir` 和 `timeoutMs` 会通过 `ctx.shell.resolve()` 依据执行器配置默认值完成解析，因此 Service Definition（`ShellExecSpec`）收到显式的 `workdir`/`timeoutMs` 值。工具层会根据调用方 agent 的 `session.header.cwd` 应用工作目录默认值，然后才调用 `resolve()`：由于 N 个会话共享一个执行器，逐会话 cwd 必须来自 `exec.agent`；只有无法取得会话 cwd 时，执行器才回退到自身配置／`process.cwd()`。存在沙箱策略时，工具会复用已经规范化的 `workspaceRoot` 作为工作目录基准，防止限制逻辑与进程启动过程对同一个会话路径拼写产生不同解析结果。
+
+### `git_bash`
+
+Git Bash（MSYS2）实例：每个请求都携带 `shell: 'git-bash'`，由选择器执行器（`dsh-shell-select`）与 `pwsh`／`wsl_bash` 一同服务。其描述向模型介绍 MSYS 方言——MSYS 路径（如 `/d/WorkSpace` 或原生 `C:\\...`）、`$VAR` 变量以及 Git for Windows 工具链。后台任务 id 使用 `git_bash` 种类。挂载 `@deepseek-ai/dsh-tool-bash/git-bash` 子路径模块（完整的函数插件：`name`／`inject`／`Config`／`apply`）。
+
+### `wsl_bash`
+
+WSL 实例：每个请求都携带 `shell: 'wsl-bash'`，按同样方式路由。其描述向模型介绍 Linux 方言——路径（如 `/mnt/c/...`，Windows 路径由 `wsl.exe` 自动转换）、`$VAR` 变量以及 Linux 用户态工具链。后台任务 id 使用 `wsl_bash` 种类。挂载 `@deepseek-ai/dsh-tool-bash/wsl-bash` 子路径模块。
 
 ### 托管 shell 环境
 

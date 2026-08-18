@@ -2,7 +2,7 @@
 
 [English](shell.md) | 中文
 
-bash 执行 seam 分为 Service Definition（[dsh-shell](../../packages/shell/shell)，`ctx.shell`）、Service Provider（[dsh-bash-local](../../packages/shell/bash-local) 与 [dsh-bash-sandbox](../../packages/shell/bash-sandbox)）和 Consumer（[dsh-tool-bash](../../packages/shell/tool-bash)，即 `bash` schema）。通用后台任务的 job id、所有权与控制位于 [jobs.md](jobs.md)；本 seam 返回一个不含任务概念的进程句柄。原始进程组机制封装在[子进程 seam](subprocess.md)之后。
+bash 执行 seam 分为 Service Definition（[dsh-shell](../../packages/shell/shell)，`ctx.shell`）、Service Provider（[dsh-bash-local](../../packages/shell/bash-local)、[dsh-bash-sandbox](../../packages/shell/bash-sandbox) 与 win32 选择器 [dsh-shell-select](../../packages/shell/shell-select)）和 Consumer（[dsh-tool-bash](../../packages/shell/tool-bash)，即 `bash` schema）。通用后台任务的 job id、所有权与控制位于 [jobs.md](jobs.md)；本 seam 返回一个不含任务概念的进程句柄。原始进程组机制封装在[子进程 seam](subprocess.md)之后。
 
 源码：[`packages/shell/shell/src/types.ts`](../../packages/shell/shell/src/types.ts)
 
@@ -23,6 +23,11 @@ bash 执行 seam 分为 Service Definition（[dsh-shell](../../packages/shell/sh
  */
 interface ShellExecRequest {
   command: string
+  /**
+   * Selector-executor routing: the backend name to route to; absent uses the
+   * wrapper's configured default. Ignored by single-backend executors.
+   */
+  shell?: string | undefined
   /** Working directory override (default: implementation-configured). */
   workdir?: string | undefined
   /** Timeout override in milliseconds (implementations cap it). */
@@ -95,8 +100,12 @@ interface ShellExecSpec {
   dshEnv?: DshEnvironment | undefined
   /** Resolved sandbox policy; ignored by executors that do not confine. */
   sandboxPolicy: SandboxExecutionPolicy | undefined
+  /** Wrapper-owned routing marker: the backend name selected by a selector executor's resolve(); other executors ignore it. */
+  shellBackend?: string | undefined
 }
 ```
+
+`ShellExecRequest.shell` 负责多后端组合的路由：win32 选择器 [dsh-shell-select](../../packages/shell/shell-select) 补全 `request.shell ?? config.default`，把选中的名字以 `shellBackend` 盖戳到解析后的 spec 上，并把 `run`/`start` 委托给该后端；单后端执行器忽略这两个字段。
 
 `stdin` 和 `env` 是受信任的进程内插件输入，不由 `dsh-tool-bash` 暴露。本地执行器会先清除环境中的凭据，再合并调用方显式提供的 env。见 [bash-stdin-env Agent Note](../../.agents/notes/implemented/architecture/2026-06-30-bash-stdin-env-trusted-plugin-api.md)。
 
