@@ -41,6 +41,8 @@ import * as SkillFileSystem from '@deepseek-ai/dsh-skill-filesystem'
 import LocalJobRegistry from '@deepseek-ai/dsh-jobs-local'
 import * as ToolAskUser from '@deepseek-ai/dsh-tool-ask-user'
 import * as ToolBash from '@deepseek-ai/dsh-tool-bash'
+import * as ToolBashGit from '@deepseek-ai/dsh-tool-bash/git-bash'
+import * as ToolBashWsl from '@deepseek-ai/dsh-tool-bash/wsl-bash'
 import * as ToolPwsh from '@deepseek-ai/dsh-tool-pwsh'
 import * as ToolBashPersistent from '@deepseek-ai/dsh-tool-bash-persistent'
 import CordisHostRunner from '@deepseek-ai/dsh-cordis-host-runner'
@@ -224,7 +226,11 @@ const TOOL_PACKAGES: ToolPackage[] = [
   {
     pkg: '@deepseek-ai/dsh-tool-bash',
     dir: 'tool-bash',
-    source: 'packages/shell/tool-bash/src/index.ts',
+    source: {
+      bash: 'packages/shell/tool-bash/src/index.ts',
+      git_bash: 'packages/shell/tool-bash/src/git-bash.ts',
+      wsl_bash: 'packages/shell/tool-bash/src/wsl-bash.ts',
+    },
     requires: ['ctx.tools', 'ctx.shell', 'ctx.systemPrompt', 'ctx.shellEnv', 'ctx.jobs at call time for run_in_background'],
     writes: ['tool/call', 'tool/result'],
     async mount(ctx) {
@@ -232,9 +238,11 @@ const TOOL_PACKAGES: ToolPackage[] = [
       await ctx.plugin(BashEnvPlugin)
       await ctx.plugin(LocalBashExecutor)
       await ctx.plugin(ToolBash)
+      await ctx.plugin(ToolBashGit)
+      await ctx.plugin(ToolBashWsl)
     },
     note:
-      'The bash tool is the model-facing consumer of the bash executor seam. A `run_in_background` run registers with the generic `ctx.jobs` runtime and is collected/stopped through the `job_*` tools from `@deepseek-ai/dsh-tool-jobs`; the `enableRunInBackground` config (default true) removes the parameter entirely when disabled.',
+      'The bash tool is the model-facing consumer of the bash executor seam. The same factory ships the `git_bash` and `wsl_bash` instances (`@deepseek-ai/dsh-tool-bash/git-bash` and `/wsl-bash`): identical parameters, dialect-specific descriptions, and `request.shell` routing to the git-bash/wsl-bash backends of the shell-select executor on win32. A `run_in_background` run registers with the generic `ctx.jobs` runtime and is collected/stopped through the `job_*` tools from `@deepseek-ai/dsh-tool-jobs`; the `enableRunInBackground` config (default true) removes the parameter entirely when disabled.',
   },
   {
     pkg: '@deepseek-ai/dsh-tool-pwsh',
