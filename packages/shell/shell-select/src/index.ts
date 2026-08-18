@@ -48,9 +48,11 @@ export interface Config {
   backends?: string[]
   /** Default route for requests without `shell` (deployment decides; web-app pins pwsh). */
   default?: string
-  /** Per-backend config partitions, each resolved by the owning executor's schema. */
+  /** Git Bash backend config partition, resolved by the Git Bash executor's schema. */
   gitBash?: GitBashConfig
+  /** WSL bash backend config partition, resolved by the WSL executor's schema. */
   wslBash?: WslBashConfig
+  /** PowerShell backend config partition, resolved by the sandbox pwsh executor's schema. */
   pwsh?: PwshConfig
 }
 
