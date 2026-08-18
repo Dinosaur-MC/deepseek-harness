@@ -25,6 +25,7 @@ import { parseWslDistroList, resolveWslPath, toWslPath } from './resolve.ts'
 /** Sandbox stance for WSL: bwrap inside the distro, best-effort, or none. */
 export type WslBashSandbox = 'auto' | 'none' | 'bwrap'
 
+/** Plugin config: local knobs plus the WSL executable, distro, and sandbox stance. */
 export interface Config extends LocalConfig {
   /** Explicit wsl.exe path; omitted probes System32 then PATH. */
   wslPath?: string
@@ -36,12 +37,19 @@ export interface Config extends LocalConfig {
   probeTimeoutMs?: number
 }
 
+/** Test hook: replace the bwrap/distro probes and executable resolution. */
 export interface WslBashInternals {
   probeBwrap?: () => boolean
   probeDistro?: () => string | undefined
   resolveWslPath?: (configured?: string) => string | undefined
 }
 
+/**
+ * WSL executor over the local bash mechanics: argv is the resolved wsl.exe
+ * followed by `--cd`/`-d`/`--` `bash -c` with the base64 payload, and the
+ * sandbox stance (`auto`/`bwrap`/`none`) is applied lazily per the module
+ * doc's probe contract.
+ */
 export class WslBashExecutor extends LocalBashExecutor {
   static override Config: z<Config> = LocalBashExecutor.Config
     .set('wslPath', z.string())
@@ -49,6 +57,7 @@ export class WslBashExecutor extends LocalBashExecutor {
     .set('sandbox', z.union([z.const('auto'), z.const('none'), z.const('bwrap')]).default('auto'))
     .set('probeTimeoutMs', z.natural().default(30_000))
 
+  /** Test hook mirroring the sandbox-local internals pattern. */
   internals: WslBashInternals = {}
 
   private readonly sandboxStance: WslBashSandbox
