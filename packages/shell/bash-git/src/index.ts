@@ -20,7 +20,7 @@ import type { ConfinedArgv, RunnerFailureRule, SandboxEnforcement, SandboxExecut
 import type {} from '@deepseek-ai/dsh-sandbox-policy'
 import type { ShellExecRequest, ShellExecSpec, ShellProcess, ShellRunResult } from '@deepseek-ai/dsh-shell'
 import { classifyDenial, classifyRunnerFailure, isRunnerSpawnFailure, matchesSignature } from '@deepseek-ai/dsh-bash-sandbox/helpers'
-import { resolveBashPath } from './resolve.ts'
+import { candidateBashPaths, resolveBashPath } from './resolve.ts'
 
 /** Sandbox stance for Git Bash: best-effort confinement or none. */
 export type GitBashSandbox = 'auto' | 'none'
@@ -93,11 +93,7 @@ export class GitBashExecutor extends LocalBashExecutor {
   private bashPath(): string {
     const path = this.tryBashPath()
     if (path !== undefined) return path
-    throw new Error(
-      'bash-git: Git Bash was not found (probed C:\\Program Files\\Git\\bin\\bash.exe, '
-      + 'C:\\Program Files\\Git\\usr\\bin\\bash.exe, C:\\Program Files (x86)\\Git\\bin\\bash.exe, '
-      + 'and PATH). Install Git for Windows or set gitBash.bashPath in the shell-select config.',
-    )
+    throw new Error(`bash-git: Git Bash was not found (probed ${candidateBashPaths().join(', ')}). Install Git for Windows or set gitBash.bashPath in the shell-select config.`)
   }
 
   /**

@@ -20,7 +20,7 @@ import type {} from '@deepseek-ai/dsh-sandbox-policy'
 import type { ShellExecRequest, ShellExecSpec, ShellProcess, ShellRunResult } from '@deepseek-ai/dsh-shell'
 import { classifyRunnerFailure } from '@deepseek-ai/dsh-bash-sandbox/helpers'
 import { BWRAP_RUNNER_FAILURE_RULES, bwrapProfileArgs } from '@deepseek-ai/dsh-sandbox-local/profiles'
-import { parseWslDistroList, resolveWslPath, toWslPath } from './resolve.ts'
+import { candidateWslPaths, parseWslDistroList, resolveWslPath, toWslPath } from './resolve.ts'
 
 /** Sandbox stance for WSL: bwrap inside the distro, best-effort, or none. */
 export type WslBashSandbox = 'auto' | 'none' | 'bwrap'
@@ -63,6 +63,7 @@ export class WslBashExecutor extends LocalBashExecutor {
   private readonly sandboxStance: WslBashSandbox
   private readonly probeTimeoutMs: number
   private bwrapVerdict: boolean | undefined
+  private distroProbed = false
   private distroVerdict: string | undefined
 
   constructor(ctx: Context, config: Config) {
@@ -98,11 +99,15 @@ export class WslBashExecutor extends LocalBashExecutor {
   private wslPath(): string {
     const path = this.tryWslPath()
     if (path !== undefined) return path
-    throw new Error('bash-wsl: WSL was not found (probed C:\\Windows\\System32\\wsl.exe and PATH). Enable Windows Subsystem for Linux or set wslBash.wslPath.')
+    throw new Error(`bash-wsl: WSL was not found (probed ${candidateWslPaths().join(', ')}). Enable Windows Subsystem for Linux or set wslBash.wslPath.`)
   }
 
   private probeDistroOnce(): string | undefined {
-    if (this.distroVerdict === undefined) {
+    if (!this.distroProbed) {
+      // The probe runs exactly once: a failed/timed-out/empty verdict is
+      // cached like a successful one, so a host without a distro never
+      // re-runs 'wsl -l -q' (up to probeTimeoutMs) on every routed command.
+      this.distroProbed = true
       const probe = this.internals.probeDistro
       if (probe !== undefined) return this.distroVerdict = probe()
       const wsl = this.tryWslPath()

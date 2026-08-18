@@ -223,6 +223,15 @@ describe('WslBashExecutor sandbox stances', () => {
     expect(calls).toBe(1)
     expect(spawns[1]!.argv).toContain('-d')
   })
+
+  it('caches a NEGATIVE distro probe across runs (no re-probe on failure)', async () => {
+    let calls = 0
+    const { executor, spawns } = setup({}, { probeBwrap: () => false, resolveWslPath: () => 'wsl.exe', probeDistro: () => { calls += 1; return undefined } })
+    await executor.run(executor.resolve({ command: 'true' }))
+    await executor.run(executor.resolve({ command: 'true' }))
+    expect(calls).toBe(1)
+    expect(spawns[1]!.argv).not.toContain('-d')
+  })
 })
 
 describe('WslBashExecutor runner-failure facts', () => {
