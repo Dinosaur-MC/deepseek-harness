@@ -576,6 +576,150 @@ function applyExport(ctx: FileCtx): ts.FunctionDeclaration | null {
   return null
 }
 
+/** A plugin built by a factory call and re-exported field-by-field (the
+ * tool-bash pattern: `export const apply = tool.apply` where `tool` is a
+ * local const from a factory call). The fields resolve to the factory
+ * module's return-object declarations. */
+interface FactoryPluginFields {
+  /** FileCtx of the module declaring the factory function. */
+  ctx: FileCtx
+  /** The `apply` value in the factory's return object. */
+  apply?: ts.FunctionLikeDeclaration
+  /** The `inject` value in the factory's return object. */
+  inject?: ts.Expression
+  /** The `Config` value in the factory's return object. */
+  config?: ts.Expression
+}
+
+/** Resolve an identifier to its local variable declaration's initializer. */
+function localValue(ctx: FileCtx, name: string): ts.Expression | null {
+  for (const stmt of ctx.sf.statements) {
+    if (!ts.isVariableStatement(stmt)) continue
+    for (const decl of stmt.declarationList.declarations) {
+      if (ts.isIdentifier(decl.name) && decl.name.text === name && decl.initializer) return decl.initializer
+    }
+  }
+  return null
+}
+
+/** Find an exported function declaration, following re-export chains. */
+function findExportedFunctionDecl(
+  world: World,
+  ctx: FileCtx,
+  name: string,
+  seen = new Set<string>(),
+): { decl: ts.FunctionDeclaration; ctx: FileCtx } | null {
+  const key = `${ctx.abs}#${name}`
+  if (seen.has(key)) return null
+  seen.add(key)
+  for (const stmt of ctx.sf.statements) {
+    if (ts.isFunctionDeclaration(stmt) && stmt.name?.text === name
+      && stmt.modifiers?.some(m => m.kind === ts.SyntaxKind.ExportKeyword)) {
+      return { decl: stmt, ctx }
+    }
+  }
+  for (const stmt of ctx.sf.statements) {
+    if (!ts.isExportDeclaration(stmt) || !stmt.moduleSpecifier || !ts.isStringLiteral(stmt.moduleSpecifier)) continue
+    const spec = stmt.moduleSpecifier.text
+    if (!spec.startsWith('.') || !spec.endsWith('.ts')) continue
+    let lookFor: string | null = null
+    if (!stmt.exportClause) {
+      lookFor = name // export * from './x.ts'
+    } else if (ts.isNamedExports(stmt.exportClause)) {
+      const el = stmt.exportClause.elements.find(e => e.name.text === name)
+      if (el) lookFor = (el.propertyName ?? el.name).text
+    }
+    if (lookFor === null) continue
+    const hit = findExportedFunctionDecl(world, loadRelative(world, ctx, spec), lookFor, seen)
+    if (hit) return hit
+  }
+  return null
+}
+
+/** Whether a node is a function-like DECLARATION (ts.isFunctionLike also
+ * admits call/construct signature declarations, which have no parameters
+ * usable as an apply signature). */
+function isFunctionLikeDecl(node: ts.Node): node is ts.FunctionLikeDeclaration {
+  return ts.isFunctionDeclaration(node) || ts.isFunctionExpression(node) || ts.isArrowFunction(node)
+    || ts.isMethodDeclaration(node) || ts.isConstructorDeclaration(node)
+    || ts.isGetAccessorDeclaration(node) || ts.isSetAccessorDeclaration(node)
+}
+
+/** The value of one property of an object literal. */
+function objectField(obj: ts.ObjectLiteralExpression, name: string): ts.Node | undefined {
+  for (const prop of obj.properties) {
+    if (ts.isPropertyAssignment(prop) && ts.isIdentifier(prop.name) && prop.name.text === name) return prop.initializer
+    if (ts.isShorthandPropertyAssignment(prop) && prop.name.text === name) return prop.name
+    if (ts.isMethodDeclaration(prop) && ts.isIdentifier(prop.name) && prop.name.text === name) return prop
+  }
+  return undefined
+}
+
+/** The object literal a function returns directly, or null. */
+function returnObject(fn: ts.FunctionDeclaration): ts.ObjectLiteralExpression | null {
+  for (const stmt of fn.body?.statements ?? []) {
+    if (ts.isReturnStatement(stmt) && stmt.expression && ts.isObjectLiteralExpression(stmt.expression)) return stmt.expression
+  }
+  return null
+}
+
+/** Detect the identifier-re-export plugin form and resolve its fields.
+ * Returns null when the entry is not this form. */
+function resolveFactoryPlugin(world: World, ctx: FileCtx): FactoryPluginFields | null {
+  let holderName: string | undefined
+  const reExported = new Set<string>()
+  for (const stmt of ctx.sf.statements) {
+    if (!ts.isVariableStatement(stmt)) continue
+    if (!stmt.modifiers?.some(m => m.kind === ts.SyntaxKind.ExportKeyword)) continue
+    for (const decl of stmt.declarationList.declarations) {
+      if (!ts.isIdentifier(decl.name) || !decl.initializer) continue
+      const init = decl.initializer
+      if (!ts.isPropertyAccessExpression(init) || !ts.isIdentifier(init.expression)) continue
+      if (holderName !== undefined && holderName !== init.expression.text) return null
+      holderName = init.expression.text
+      reExported.add(decl.name.text)
+    }
+  }
+  // A function plugin re-exports at least name and apply from the holder.
+  if (holderName === undefined || !reExported.has('name') || !reExported.has('apply')) return null
+  const holderInit = localValue(ctx, holderName)
+  if (holderInit === null || !ts.isCallExpression(holderInit) || !ts.isIdentifier(holderInit.expression)) return null
+  const imp = ctx.imports.get(holderInit.expression.text)
+  if (!imp || !imp.specifier.startsWith('.') || !imp.specifier.endsWith('.ts')) return null
+  const fn = findExportedFunctionDecl(world, loadRelative(world, ctx, imp.specifier), imp.imported)
+  if (fn === null) return null
+  const obj = returnObject(fn.decl)
+  if (obj === null) return null
+  const apply = objectField(obj, 'apply')
+  const inject = objectField(obj, 'inject')
+  let config: ts.Expression | undefined
+  const rawConfig = objectField(obj, 'Config')
+  if (rawConfig !== undefined && ts.isIdentifier(rawConfig)) {
+    config = localValue(fn.ctx, rawConfig.text) ?? rawConfig
+  } else if (rawConfig !== undefined && ts.isExpression(rawConfig)) {
+    config = rawConfig
+  }
+  return {
+    ctx: fn.ctx,
+    // exactOptionalPropertyTypes: omit the optional field rather than
+    // assigning an explicit undefined when the factory lacks the value.
+    ...(apply !== undefined && isFunctionLikeDecl(apply) ? { apply } : {}),
+    ...(inject !== undefined && ts.isExpression(inject) ? { inject } : {}),
+    ...(config !== undefined ? { config } : {}),
+  }
+}
+
+/** Read the `inject` keys from a factory plugin's return object. */
+function injectFromFactory(fields: FactoryPluginFields, violations: string[]): string[] {
+  const expr = fields.inject
+  if (expr === undefined) return []
+  if (!ts.isArrayLiteralExpression(expr)) {
+    violations.push(`${fields.ctx.rel}: factory plugin field 'inject' is not a plain string-array literal; teach the generator the new declaration form.`)
+    return []
+  }
+  return expr.elements.map(el => ts.isStringLiteral(el) ? el.text : el.getText(fields.ctx.sf))
+}
+
 /**
  * Walk every `packages/<group>/<pkg>` entry and build the catalog entries.
  * Hard-errors (aggregated) on any violation listed in the module doc.
@@ -622,13 +766,15 @@ export function collectConfigCatalog(scanRoot: string = root): CatalogEntry[] {
 
     // Classify, mirroring the Loader's unwrapExports: the default export IS
     // the plugin when present; else an exported `apply` makes the module
-    // namespace the plugin; else the package is a plain library.
+    // namespace the plugin; else identifier re-exports of a factory-built
+    // plugin object (tool-bash pattern) do; else a plain library.
     const dflt = defaultExport(ctx)
     const apply = applyExport(ctx)
     let pluginClass: ts.ClassDeclaration | null = null
     let configParam: ts.ParameterDeclaration | undefined
     let kind: Kind
     let className: string | undefined
+    let factoryPlugin: FactoryPluginFields | null = null
     if (dflt && ts.isClassDeclaration(dflt)) {
       className = dflt.name?.text
       if (dflt.modifiers?.some(m => m.kind === ts.SyntaxKind.AbstractKeyword)) {
@@ -646,7 +792,13 @@ export function collectConfigCatalog(scanRoot: string = root): CatalogEntry[] {
       configParam = apply.parameters[1]
       kind = configParam ? 'config' : 'no-config'
     } else {
-      kind = 'library'
+      factoryPlugin = resolveFactoryPlugin(world, ctx)
+      if (factoryPlugin !== null) {
+        configParam = factoryPlugin.apply?.parameters[1]
+        kind = configParam ? 'config' : 'no-config'
+      } else {
+        kind = 'library'
+      }
     }
 
     const entry: CatalogEntry = {
@@ -654,7 +806,9 @@ export function collectConfigCatalog(scanRoot: string = root): CatalogEntry[] {
       dir,
       entry: entryRel,
       kind,
-      inject: kind === 'library' || kind === 'seam' ? [] : findInject(ctx, pluginClass, violations),
+      inject: kind === 'library' || kind === 'seam' ? []
+        : factoryPlugin !== null ? injectFromFactory(factoryPlugin, violations)
+          : findInject(ctx, pluginClass, violations),
       ...className !== undefined ? { className } : {},
     }
     entries.push(entry)
@@ -662,7 +816,8 @@ export function collectConfigCatalog(scanRoot: string = root): CatalogEntry[] {
 
     // Resolve the config type and paste its package-local transitive closure.
     if (!configParam.type || !ts.isTypeReferenceNode(configParam.type) || !ts.isIdentifier(configParam.type.typeName)) {
-      violations.push(`${pkg}: config parameter type (${pointer(entryRel, ctx.sf, configParam)}) is not a plain type-name reference; declare a named config type.`)
+      const configCtx = factoryPlugin !== null ? factoryPlugin.ctx : ctx
+      violations.push(`${pkg}: config parameter type (${pointer(configCtx.rel, configCtx.sf, configParam)}) is not a plain type-name reference; declare a named config type.`)
       continue
     }
     const typeName = configParam.type.typeName.text
@@ -674,7 +829,11 @@ export function collectConfigCatalog(scanRoot: string = root): CatalogEntry[] {
     // cannot both render unambiguously, so every resolution is identity-checked
     // by source pointer and a collision is a violation, never a silent skip.
     const pastedDeclByName = new Map<string, string>()
-    const queue: { name: string; from: FileCtx }[] = [{ name: typeName, from: ctx }]
+    // A factory plugin's apply signature lives in the factory module, so its
+    // config type resolves from there (the entry's own Config alias — required
+    // so the re-exported runtime schema const and the type can share the name —
+    // would trip the package-local unaliased-import rule).
+    const queue: { name: string; from: FileCtx }[] = [{ name: typeName, from: factoryPlugin !== null ? factoryPlugin.ctx : ctx }]
     for (let item = queue.shift(); item !== undefined; item = queue.shift()) {
       const { name, from } = item
       const resolved = resolveTypeName(from, name, cache, violations)
@@ -724,9 +883,16 @@ export function collectConfigCatalog(scanRoot: string = root): CatalogEntry[] {
     entry.refs = [...refs.values()].sort((a, b) => a.alias.localeCompare(b.alias))
 
     // Statically walk the runtime schema (when one exists) for the subset check.
-    const schemaExpr = findSchemaExpr(ctx, pluginClass)
+    const schemaExpr = factoryPlugin !== null
+      ? (factoryPlugin.config !== undefined ? unwrapExpr(factoryPlugin.config) : null)
+      : findSchemaExpr(ctx, pluginClass)
     if (schemaExpr) {
-      const { keys, composes } = walkSchemaExpr(ctx, unwrapExpr(schemaExpr), `${pkg} (${entryRel})`, violations)
+      const { keys, composes } = walkSchemaExpr(
+        factoryPlugin !== null ? factoryPlugin.ctx : ctx,
+        schemaExpr,
+        `${pkg} (${entryRel})`,
+        violations,
+      )
       entry.schemaKeys = keys
       entry.schemaComposes = composes
     } else {

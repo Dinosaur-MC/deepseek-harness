@@ -2408,6 +2408,22 @@ export type TokenMeterConfig = Record<string, never>
 
 Source: [`packages/llm/token-meter/src/types.ts:12`](../packages/llm/token-meter/src/types.ts)
 
+<a id="deepseek-aidsh-tool-bash"></a>
+
+## `@deepseek-ai/dsh-tool-bash`
+
+Requires: `tools` · `shell` · `systemPrompt` · `shellEnv`
+
+```ts config-catalog
+/** Configuration for a shell tool instance. */
+export interface Config {
+  /** Expose `run_in_background` (default true); disabled calls are also rejected. */
+  enableRunInBackground?: boolean
+}
+```
+
+Source: [`packages/shell/tool-bash/src/factory.ts:49`](../packages/shell/tool-bash/src/factory.ts)
+
 <a id="deepseek-aidsh-tool-bash-persistent"></a>
 
 ## `@deepseek-ai/dsh-tool-bash-persistent`
@@ -3204,7 +3220,6 @@ Imported as libraries by other packages; a `cordis.yml` cannot load them.
 - `@deepseek-ai/dsh-session-title-llm` ([`packages/session/session-title-llm/src/index.ts`](../packages/session/session-title-llm/src/index.ts))
 - `@deepseek-ai/dsh-subagent-in-process-driver` ([`packages/subagent/subagent-in-process-driver/src/index.ts`](../packages/subagent/subagent-in-process-driver/src/index.ts))
 - `@deepseek-ai/dsh-timeout` ([`packages/util/timeout/src/index.ts`](../packages/util/timeout/src/index.ts))
-- `@deepseek-ai/dsh-tool-bash` ([`packages/shell/tool-bash/src/index.ts`](../packages/shell/tool-bash/src/index.ts))
 - `@deepseek-ai/dsh-typert-generator` ([`packages/typert/generator/src/index.ts`](../packages/typert/generator/src/index.ts))
 - `@deepseek-ai/dsh-typert-protocol` ([`packages/typert/protocol/src/index.ts`](../packages/typert/protocol/src/index.ts))
 - `@deepseek-ai/dsh-typert-registry` ([`packages/typert/registry/src/index.ts`](../packages/typert/registry/src/index.ts))
