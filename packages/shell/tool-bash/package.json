@@ -18,16 +18,25 @@
       "types": "./lib/types/index.d.ts",
       "default": "./lib/index.js"
     },
+    "./git-bash": {
+      "types": "./lib/types/git-bash.d.ts",
+      "default": "./lib/types/git-bash.js"
+    },
     "./invariant": {
       "types": "./lib/types/invariant.d.ts",
       "default": "./lib/invariant.js"
     },
     "./src/*": "./src/*",
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./wsl-bash": {
+      "types": "./lib/types/wsl-bash.d.ts",
+      "default": "./lib/types/wsl-bash.js"
+    }
   },
   "files": [
     "lib/index.js",
     "lib/invariant.js",
+    "lib/types/**/*.js",
     "lib/types/**/*.d.ts"
   ],
   "license": "MIT",

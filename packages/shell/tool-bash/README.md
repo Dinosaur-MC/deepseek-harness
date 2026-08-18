@@ -6,7 +6,7 @@ The model-facing `bash` tool registered over the `ctx.shell` executor seam. Fore
 
 Requires a loaded executor Service Provider (e.g. `@deepseek-ai/dsh-bash-local`) and the [`@deepseek-ai/dsh-shell-env`](../shell-env/README.md) registry; the plugin stays pending until every injected service exists (`inject: ['tools', 'bash', 'systemPrompt', 'bashEnv']`). The tool contract is bash-dialect — mount a bash-parsing executor.
 
-The package root exposes only the Cordis plugin contract (`name`, `inject`, `Config`, `apply`); result rendering and background-process adaptation remain package-internal.
+The package root exposes only the Cordis plugin contract (`name`, `inject`, `Config`, `apply`); result rendering and background-process adaptation remain package-internal. The `./git-bash` and `./wsl-bash` subpaths export fixed `git_bash`/`wsl_bash` instances with the same plugin contract; all three tools are built by the shared `defineShellTool` factory and differ only in tool name, routed `request.shell`, and dialect description.
 
 The plugin also contributes the `tool:bash` prompt section (order 105): check the `[exit code: N]` marker on every result and investigate failures before moving on.
 
@@ -25,6 +25,14 @@ The plugin also contributes the `tool:bash` prompt section (order 105): check th
 | `justification` | string | Required together with `sandbox_permissions` (each without the other is a validation error): one sentence for the user explaining why this exact command needs the wider access. |
 
 `command`, `workdir`, and `timeoutMs` are resolved against the executor's config defaults via `ctx.shell.resolve()` before execution, so the Service Definition (`ShellExecSpec`) receives explicit `workdir`/`timeoutMs` values. The workdir default is applied in the tool layer from the calling agent's `session.header.cwd` BEFORE `resolve()` — the per-session cwd must come from `exec.agent`, since N sessions share one executor; only when no session cwd is available does the executor fall back to its own config / `process.cwd()`. When sandbox policy is present, the tool reuses its already-canonical `workspaceRoot` as the workdir base so confinement and process launch cannot resolve the same session spelling differently.
+
+### `git_bash`
+
+The Git Bash (MSYS2) instance: every request carries `shell: 'git-bash'`, so a selector executor (`dsh-shell-select`) serves it beside `pwsh`/`wsl_bash`. Its description teaches the MSYS dialect — MSYS paths such as `/d/WorkSpace` or native `C:\\...`, `$VAR` variables, and the Git for Windows toolchain. Background job ids use the `git_bash` kind. Mount the `@deepseek-ai/dsh-tool-bash/git-bash` subpath module (a complete function plugin: `name`/`inject`/`Config`/`apply`).
+
+### `wsl_bash`
+
+The WSL instance: every request carries `shell: 'wsl-bash'`, routed the same way. Its description teaches the Linux dialect — paths such as `/mnt/c/...` (Windows paths auto-converted by `wsl.exe`), `$VAR` variables, and the Linux userland. Background job ids use the `wsl_bash` kind. Mount the `@deepseek-ai/dsh-tool-bash/wsl-bash` subpath module.
 
 ### Managed shell environment
 

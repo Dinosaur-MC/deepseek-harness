@@ -1,6 +1,6 @@
 import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { join, resolve as resolvePath } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import { CallId } from '@deepseek-ai/dsh-llm'
@@ -20,6 +20,8 @@ import { LocalBashExecutor } from '@deepseek-ai/dsh-bash-local'
 import LocalSubprocessRuntime from '@deepseek-ai/dsh-subprocess-local'
 import SandboxPolicyService from '@deepseek-ai/dsh-sandbox-policy'
 import * as ToolBash from '@deepseek-ai/dsh-tool-bash'
+import * as GitBashTool from '@deepseek-ai/dsh-tool-bash/git-bash'
+import * as WslBashTool from '@deepseek-ai/dsh-tool-bash/wsl-bash'
 import * as BashEnvPlugin from '@deepseek-ai/dsh-shell-env'
 import { processOutcome } from '../src/background.ts'
 import { renderProcessRead, renderResult } from '../src/render.ts'
@@ -176,6 +178,51 @@ class CountingStartExecutor extends ShellExecutor {
       signal: null,
       done: Promise.resolve(),
       readOutput: () => ({ delta: '', lossy: false }),
+      kill: () => false,
+    }
+  }
+}
+
+/** Test executor that records `request.shell` for routing assertions. */
+class RoutingShellExecutor extends ShellExecutor {
+  readonly shells: Array<string | undefined> = []
+
+  override get sandboxMode() {
+    return undefined
+  }
+
+  resolve(request: ShellExecRequest): ShellExecSpec {
+    this.shells.push(request.shell)
+    return {
+      command: request.command,
+      workdir: request.workdir ?? process.cwd(),
+      timeoutMs: request.timeoutMs ?? 1000,
+      stdoutMaxBytes: request.stdoutMaxBytes ?? 64_000,
+      sandboxPolicy: undefined,
+    }
+  }
+
+  run(spec: ShellExecSpec): Promise<ShellRunResult> {
+    return Promise.resolve({
+      exitCode: 0,
+      signal: null,
+      timedOut: false,
+      aborted: false,
+      timeoutMs: spec.timeoutMs,
+      stdout: { text: 'ok', truncated: false },
+      stderr: { text: '', truncated: false },
+    })
+  }
+
+  start(): ShellProcess {
+    return {
+      status: 'completed',
+      exitCode: 0,
+      signal: null,
+      done: Promise.resolve(),
+      // Canned readOutput distinct from the other fakes' empty delta, so the
+      // background handle echoes the same 'ok' the foreground run() returns.
+      readOutput: () => ({ delta: 'ok', lossy: false }),
       kill: () => false,
     }
   }
@@ -1225,6 +1272,31 @@ describe('the model-facing bash tool builds its request from named args only (no
     expect(bash.requests[0]?.dshEnv?.DSH_SESSION_JSONL).not.toBe(bash.requests[1]?.dshEnv?.DSH_SESSION_JSONL)
   })
 
+  it('resolves a relative workdir against the agent session cwd in the request', async () => {
+    const { ctx, bash } = await setupRecording()
+    const cwd = process.cwd()
+    const agent = { inject: () => undefined, session: { header: { version: 0, id: 'rel-cwd', createdAt: 0, cwd } } } as unknown as Agent
+    await ctx.tools.execute({
+      signal: testToolSignal,
+      callId: CallId('rel-cwd'),
+      name: 'bash',
+      arguments: { command: 'true', description: 'run command', workdir: 'bin' },
+      agent,
+    })
+    expect(bash.requests[0]?.workdir).toBe(resolvePath(cwd, 'bin'))
+  })
+
+  it('forwards an explicit timeoutMs into the request', async () => {
+    const { ctx, bash } = await setupRecording()
+    await ctx.tools.execute({
+      signal: testToolSignal,
+      callId: CallId('timeout-ms'),
+      name: 'bash',
+      arguments: { command: 'true', description: 'run command', timeoutMs: 5000 },
+    })
+    expect(bash.requests[0]?.timeoutMs).toBe(5000)
+  })
+
   it('does not forward trusted-only fields even when the model includes them as extra arguments', async () => {
     const { ctx, bash } = await setupRecording()
     // Unknown `env` and `stdin` keys are ignored by the schema and named request construction.
@@ -1275,5 +1347,70 @@ describe('the model-facing bash tool builds its request from named args only (no
     expect('env' in request).toBe(false)
     expect('stdin' in request).toBe(false)
     expect('stdoutMaxBytes' in request).toBe(false)
+  })
+})
+
+describe('factory subpath instances (git_bash / wsl_bash)', () => {
+  async function setupRouting() {
+    const ctx = new Context()
+    await ctx.plugin(SystemPrompt)
+    await ctx.plugin(ToolRuntime)
+    await ctx.plugin(RoutingShellExecutor)
+    await ctx.plugin(BashEnvPlugin)
+    return { ctx, shell: ctx.shell as RoutingShellExecutor }
+  }
+
+  it('git_bash routes request.shell to git-bash and uses its own name/section', async () => {
+    const { ctx, shell } = await setupRouting()
+    // The subpath module exports the plugin fields (name/inject/Config/apply);
+    // its module namespace is itself an object plugin ctx.plugin accepts.
+    await ctx.plugin(GitBashTool)
+    const schema = ctx.tools.schemas().find(tool => tool.name === 'git_bash')
+    expect(schema).toBeDefined()
+    expect(schema?.description).toContain('Git Bash')
+    await call(ctx, 'git_bash', { command: 'echo x', description: 'test' })
+    expect(shell.shells).toEqual(['git-bash'])
+    const prompt = (await ctx.systemPrompt.assemble()).sections.find(section => section.name === 'tool:git_bash')
+    expect(prompt).toBeDefined()
+  })
+
+  it('wsl_bash routes request.shell to wsl-bash and uses its own name/section', async () => {
+    const { ctx, shell } = await setupRouting()
+    await ctx.plugin(WslBashTool)
+    const schema = ctx.tools.schemas().find(tool => tool.name === 'wsl_bash')
+    expect(schema).toBeDefined()
+    expect(schema?.description).toContain('WSL')
+    await call(ctx, 'wsl_bash', { command: 'echo x', description: 'test' })
+    expect(shell.shells).toEqual(['wsl-bash'])
+    const prompt = (await ctx.systemPrompt.assemble()).sections.find(section => section.name === 'tool:wsl_bash')
+    expect(prompt).toBeDefined()
+  })
+
+  it('git_bash background jobs use the git_bash job kind prefix', async () => {
+    const ctx = new Context()
+    await ctx.plugin(SystemPrompt)
+    await ctx.plugin(ToolRuntime)
+    await ctx.plugin(LocalJobRegistry)
+    await ctx.plugin(ToolTasks)
+    await ctx.plugin(RoutingShellExecutor)
+    await ctx.plugin(BashEnvPlugin)
+    await ctx.plugin(GitBashTool)
+    const result = await call(ctx, 'git_bash', { command: 'sleep 1', description: 'test command', run_in_background: true })
+    expect(result.isError).toBe(false)
+    expect(text(result)).toBe('started background job git_bash-1')
+  })
+
+  it('wsl_bash background jobs use the wsl_bash job kind prefix', async () => {
+    const ctx = new Context()
+    await ctx.plugin(SystemPrompt)
+    await ctx.plugin(ToolRuntime)
+    await ctx.plugin(LocalJobRegistry)
+    await ctx.plugin(ToolTasks)
+    await ctx.plugin(RoutingShellExecutor)
+    await ctx.plugin(BashEnvPlugin)
+    await ctx.plugin(WslBashTool)
+    const result = await call(ctx, 'wsl_bash', { command: 'sleep 1', description: 'test command', run_in_background: true })
+    expect(result.isError).toBe(false)
+    expect(text(result)).toBe('started background job wsl_bash-1')
   })
 })
