@@ -6,7 +6,7 @@ Git Bash Service Provider for the [`@deepseek-ai/dsh-shell`](../shell/) executor
 
 The executable is resolved lazily at the first routed command: `config.bashPath` wins verbatim; otherwise the well-known Program Files installs and then PATH entries are probed in order. When Git Bash is missing, the first routed command fails loud with an error naming every probe. `candidateBashPaths` and `resolveBashPath` are exported pure functions parameterized by env/platform (the twin of `resolvePwshPath`).
 
-This executor mounts as a plain backend instance behind the shell-select wrapper (later tasks); it never registers `ctx.shell` itself, so the single-seat shell service stays owned by the selector. Its knobs are deployment config under the `gitBash:` partition.
+This executor mounts as a plain backend instance behind the shell-select wrapper; it never registers `ctx.shell` itself, so the single-seat shell service stays owned by the selector. Its knobs are deployment config under the `gitBash:` partition.
 
 ## Sandbox modes
 
@@ -36,7 +36,7 @@ Semantics:
 
 #### What the model sees
 
-The `git_bash` tool is assembled by the tool factory (dsh-tool-bash) over the shell-select wrapper in a later task: it routes `git_bash` calls to this backend's MSYS bash with the `gitBash:` partition config. This package contributes the backend's sandbox stance — the `sandboxMode` advertisement (the policy default mode, only while confinement is usable) that the tool layer reads when composing the tool.
+The `git_bash` tool is assembled by the tool factory (dsh-tool-bash) over the shell-select wrapper: it routes `git_bash` calls to this backend's MSYS bash with the `gitBash:` partition config. This package contributes the backend's sandbox stance — the `sandboxMode` advertisement (the policy default mode, only while confinement is usable) that the tool layer reads when composing the tool.
 
 #### Token effect
 

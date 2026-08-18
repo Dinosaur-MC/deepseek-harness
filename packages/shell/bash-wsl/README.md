@@ -6,7 +6,7 @@ WSL Service Provider for the [`@deepseek-ai/dsh-shell`](../shell/) executor seam
 
 The executable is resolved lazily at the first routed command: `config.wslPath` wins verbatim; otherwise System32 and then PATH entries are probed in order. When WSL is missing, the first routed command fails loud with an error naming every probe. The distro is `config.wslDistro` when set, else the first line of `wsl -l -q` (probed once and cached; a failed probe falls back to the default distro, i.e. no `-d`). `candidateWslPaths`, `resolveWslPath`, `parseWslDistroList`, and `toWslPath` are exported pure functions parameterized by env/platform.
 
-This executor mounts as a plain backend instance behind the shell-select wrapper (later tasks); it never registers `ctx.shell` itself, so the single-seat shell service stays owned by the selector. Its knobs are deployment config under the `wslBash:` partition.
+This executor mounts as a plain backend instance behind the shell-select wrapper; it never registers `ctx.shell` itself, so the single-seat shell service stays owned by the selector. Its knobs are deployment config under the `wslBash:` partition.
 
 ## Sandbox modes
 
@@ -38,7 +38,7 @@ Semantics:
 
 #### What the model sees
 
-The `wsl_bash` tool is assembled by the tool factory (dsh-tool-bash) over the shell-select wrapper in a later task: it routes `wsl_bash` calls to this backend's WSL bash with the `wslBash:` partition config. This package contributes the backend's sandbox stance — the `sandboxMode` advertisement (the policy default mode, only while bwrap is usable) that the tool layer reads when composing the tool.
+The `wsl_bash` tool is assembled by the tool factory (dsh-tool-bash) over the shell-select wrapper: it routes `wsl_bash` calls to this backend's WSL bash with the `wslBash:` partition config. This package contributes the backend's sandbox stance — the `sandboxMode` advertisement (the policy default mode, only while bwrap is usable) that the tool layer reads when composing the tool.
 
 #### Token effect
 

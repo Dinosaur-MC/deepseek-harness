@@ -6,7 +6,7 @@
 
 可执行文件在首次路由命令时惰性解析：`config.wslPath` 原样优先；否则按顺序探测 System32，再探测 PATH 条目。当 WSL 缺失时，首次路由的命令会响亮失败，报错信息列出全部探测点。发行版为 `config.wslDistro`（已设置时），否则取 `wsl -l -q` 首行（探测一次并缓存；探测失败回退到默认发行版，即不带 `-d`）。`candidateWslPaths`、`resolveWslPath`、`parseWslDistroList` 与 `toWslPath` 是导出的纯函数，以 env/platform 为参数。
 
-本执行器以后端普通实例的形式挂在 shell-select 包装器之后（由后续任务实现）；它自身从不注册 `ctx.shell`，因此 shell 单席位服务始终由选择器持有。其旋钮是 `wslBash:` 分区下的部署配置。
+本执行器以后端普通实例的形式挂在 shell-select 包装器之后；它自身从不注册 `ctx.shell`，因此 shell 单席位服务始终由选择器持有。其旋钮是 `wslBash:` 分区下的部署配置。
 
 ## 沙箱模式
 
@@ -38,7 +38,7 @@
 
 #### 模型看到的内容
 
-`wsl_bash` 工具由工具工厂（dsh-tool-bash）在后续任务中基于 shell-select 包装器组装：它把 `wsl_bash` 调用路由到此后端的 WSL bash，并携带 `wslBash:` 分区配置。本包贡献后端沙箱立场——`sandboxMode` 能力公告（仅在 bwrap 可用时的策略默认模式）——工具层组装工具时读取它。
+`wsl_bash` 工具由工具工厂（dsh-tool-bash）基于 shell-select 包装器组装：它把 `wsl_bash` 调用路由到此后端的 WSL bash，并携带 `wslBash:` 分区配置。本包贡献后端沙箱立场——`sandboxMode` 能力公告（仅在 bwrap 可用时的策略默认模式）——工具层组装工具时读取它。
 
 #### Token 影响
 

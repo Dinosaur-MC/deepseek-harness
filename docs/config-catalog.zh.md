@@ -342,6 +342,29 @@ export interface Config {
 
 来源：[`packages/attachment/attachment-local/src/index.ts:24`](../packages/attachment/attachment-local/src/index.ts)
 
+<a id="deepseek-aidsh-bash-git"></a>
+
+## `@deepseek-ai/dsh-bash-git`
+
+```ts config-catalog
+/** Plugin config: local knobs plus the Git Bash executable and sandbox stance. */
+export interface Config extends LocalConfig {
+  /** Explicit Git Bash executable; omitted probes well-known installs then PATH. */
+  bashPath?: string
+  /** `auto` probes windows-acl confinement of bash.exe and falls back unconfined; `none` never consults the sandbox. */
+  sandbox?: GitBashSandbox
+  /** Positive timeout for the confinement probe. */
+  probeTimeoutMs?: number
+}
+
+/** Sandbox stance for Git Bash: best-effort confinement or none. */
+export type GitBashSandbox = 'auto' | 'none'
+```
+
+依赖：[`LocalConfig`](#deepseek-aidsh-bash-local)
+
+来源：[`packages/shell/bash-git/src/index.ts:29`](../packages/shell/bash-git/src/index.ts)
+
 <a id="deepseek-aidsh-bash-local"></a>
 
 ## `@deepseek-ai/dsh-bash-local`
@@ -388,6 +411,31 @@ export type Config = LocalConfig
 依赖：[`LocalConfig`](#deepseek-aidsh-bash-local)
 
 来源：[`packages/shell/bash-sandbox/src/index.ts:35`](../packages/shell/bash-sandbox/src/index.ts)
+
+<a id="deepseek-aidsh-bash-wsl"></a>
+
+## `@deepseek-ai/dsh-bash-wsl`
+
+```ts config-catalog
+/** Plugin config: local knobs plus the WSL executable, distro, and sandbox stance. */
+export interface Config extends LocalConfig {
+  /** Explicit wsl.exe path; omitted probes System32 then PATH. */
+  wslPath?: string
+  /** Explicit distro; omitted probes `wsl -l -q` once for the first listed distro. */
+  wslDistro?: string
+  /** `auto` probes bwrap and falls back unconfined; `bwrap` fails loud; `none` never probes. */
+  sandbox?: WslBashSandbox
+  /** Positive timeout for the WSL probes (cold-start aware). */
+  probeTimeoutMs?: number
+}
+
+/** Sandbox stance for WSL: bwrap inside the distro, best-effort, or none. */
+export type WslBashSandbox = 'auto' | 'none' | 'bwrap'
+```
+
+依赖：[`LocalConfig`](#deepseek-aidsh-bash-local)
+
+来源：[`packages/shell/bash-wsl/src/index.ts:29`](../packages/shell/bash-wsl/src/index.ts)
 
 <a id="deepseek-aidsh-client-connection"></a>
 
@@ -1849,6 +1897,32 @@ export interface Config {
 
 来源：[`packages/shell/shell-env/src/index.ts:29`](../packages/shell/shell-env/src/index.ts)
 
+<a id="deepseek-aidsh-shell-select"></a>
+
+## `@deepseek-ai/dsh-shell-select`
+
+需要：`subprocess` · `sandbox` · `sandboxPolicy`
+
+```ts config-catalog
+/** Selector plugin config: enabled backend names, the default route, and per-backend partitions. */
+export interface Config {
+  /** Enabled backend names, in advertisement order (default: git-bash, wsl-bash, pwsh). */
+  backends?: string[]
+  /** Default route for requests without `shell` (deployment decides; web-app pins pwsh). */
+  default?: string
+  /** Git Bash backend config partition, resolved by the Git Bash executor's schema. */
+  gitBash?: GitBashConfig
+  /** WSL bash backend config partition, resolved by the WSL executor's schema. */
+  wslBash?: WslBashConfig
+  /** PowerShell backend config partition, resolved by the sandbox pwsh executor's schema. */
+  pwsh?: PwshConfig
+}
+```
+
+依赖：[`GitBashConfig`](#deepseek-aidsh-bash-git) · [`PwshConfig`](#deepseek-aidsh-pwsh-sandbox) · [`WslBashConfig`](#deepseek-aidsh-bash-wsl)
+
+来源：[`packages/shell/shell-select/src/index.ts:46`](../packages/shell/shell-select/src/index.ts)
+
 <a id="deepseek-aidsh-skill"></a>
 
 ## `@deepseek-ai/dsh-skill`
@@ -2335,22 +2409,6 @@ export type TokenMeterConfig = Record<string, never>
 ```
 
 来源：[`packages/llm/token-meter/src/types.ts:12`](../packages/llm/token-meter/src/types.ts)
-
-<a id="deepseek-aidsh-tool-bash"></a>
-
-## `@deepseek-ai/dsh-tool-bash`
-
-需要：`tools` · `bash` · `systemPrompt` · `bashEnv`
-
-```ts config-catalog
-/** Configuration for the bash tool. */
-export interface Config {
-  /** Expose `run_in_background` (default true); disabled calls are also rejected. */
-  enableRunInBackground?: boolean
-}
-```
-
-来源：[`packages/shell/tool-bash/src/index.ts:34`](../packages/shell/tool-bash/src/index.ts)
 
 <a id="deepseek-aidsh-tool-bash-persistent"></a>
 
@@ -3147,6 +3205,7 @@ export interface Config {
 - `@deepseek-ai/dsh-session-title-llm`（[`packages/session/session-title-llm/src/index.ts`](../packages/session/session-title-llm/src/index.ts)）
 - `@deepseek-ai/dsh-subagent-in-process-driver`（[`packages/subagent/subagent-in-process-driver/src/index.ts`](../packages/subagent/subagent-in-process-driver/src/index.ts)）
 - `@deepseek-ai/dsh-timeout`（[`packages/util/timeout/src/index.ts`](../packages/util/timeout/src/index.ts)）
+- `@deepseek-ai/dsh-tool-bash`（[`packages/shell/tool-bash/src/index.ts`](../packages/shell/tool-bash/src/index.ts)）
 - `@deepseek-ai/dsh-typert-generator`（[`packages/typert/generator/src/index.ts`](../packages/typert/generator/src/index.ts)）
 - `@deepseek-ai/dsh-typert-protocol`（[`packages/typert/protocol/src/index.ts`](../packages/typert/protocol/src/index.ts)）
 - `@deepseek-ai/dsh-typert-registry`（[`packages/typert/registry/src/index.ts`](../packages/typert/registry/src/index.ts)）

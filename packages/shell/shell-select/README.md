@@ -4,7 +4,7 @@ English | [中文](README.zh.md)
 
 Selector Service Provider for the [`@deepseek-ai/dsh-shell`](../shell/) executor seam. This executor occupies the single `ctx.shell` seat and routes each request to one of several backends held as plain instances — the Git Bash executor ([`@deepseek-ai/dsh-bash-git`](../bash-git/)), the WSL executor ([`@deepseek-ai/dsh-bash-wsl`](../bash-wsl/)), and the sandboxed PowerShell executor ([`@deepseek-ai/dsh-pwsh-sandbox`](../pwsh-sandbox/)). win32 compositions mount this selector and mount no other `ctx.shell` provider; POSIX compositions keep a single backend directly on the seat.
 
-The model-facing tool name selects the backend: the tool factory (later task) sends `request.shell: 'git-bash' | 'wsl-bash'`, a request without `shell` goes to the configured `default`, and `resolve()` stamps the chosen name onto the spec as `shellBackend` so `run`/`start` route the same spec consistently. Unknown or disabled names fail loud with the `SHELL_BACKEND_UNAVAILABLE` error code. `sandboxMode` advertises the first sandbox mode any enabled backend declares, which the tool layer reads when composing the tool.
+The model-facing tool name selects the backend: the tool factory (dsh-tool-bash) sends `request.shell: 'git-bash' | 'wsl-bash'`, a request without `shell` goes to the configured `default`, and `resolve()` stamps the chosen name onto the spec as `shellBackend` so `run`/`start` route the same spec consistently. Unknown or disabled names fail loud with the `SHELL_BACKEND_UNAVAILABLE` error code. `sandboxMode` advertises the first sandbox mode any enabled backend declares, which the tool layer reads when composing the tool.
 
 Each backend is constructed on its own child fiber with isolated `shell`/`settings` scopes, so the backends' inherited `ctx.shell` service registration and settings wiring can never collide with this executor's seat. Construction never probes: executable resolution and sandbox probes stay lazy inside the backends and only run at first use, so an uninstalled Git Bash or WSL distro does not break the other shells in the composition.
 
@@ -39,7 +39,7 @@ The `shell` settings namespace is owned by this package: a stored section layers
 
 #### What the model sees
 
-The three shell tools route through this executor's single `ctx.shell` seat. The tool factory (dsh-tool-bash, later task) sets `request.shell` per tool name; this package's `backends`/`default` config decides which backend instances exist, and the `sandboxMode` advertisement (the first mode any enabled backend declares) feeds the tool layer's escalation presentation. The package itself registers no prompt or schema.
+The three shell tools route through this executor's single `ctx.shell` seat. The tool factory (dsh-tool-bash) sets `request.shell` per tool name; this package's `backends`/`default` config decides which backend instances exist, and the `sandboxMode` advertisement (the first mode any enabled backend declares) feeds the tool layer's escalation presentation. The package itself registers no prompt or schema.
 
 #### Token effect
 
