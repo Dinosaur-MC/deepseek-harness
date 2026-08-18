@@ -101,6 +101,7 @@
       "@deepseek-ai/dsh-bash-git": ["./packages/shell/bash-git/src/index.ts"],
       "@deepseek-ai/dsh-bash-wsl": ["./packages/shell/bash-wsl/src/index.ts"],
       "@deepseek-ai/dsh-bash-sandbox/helpers": ["./packages/shell/bash-sandbox/src/helpers.ts"],
+      "@deepseek-ai/dsh-shell-select": ["./packages/shell/shell-select/src/index.ts"],
       "@deepseek-ai/dsh-*/invariant": [
         "./packages/core/*/src/invariant.ts",
         "./packages/prompt/*/src/invariant.ts",

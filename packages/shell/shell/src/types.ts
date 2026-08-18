@@ -37,6 +37,11 @@ export interface ShellSandboxInfo {
  */
 export interface ShellExecRequest {
   command: string
+  /**
+   * Selector-executor routing: the backend name to route to; absent uses the
+   * wrapper's configured default. Ignored by single-backend executors.
+   */
+  shell?: string | undefined
   /** Working directory override (default: implementation-configured). */
   workdir?: string | undefined
   /** Timeout override in milliseconds (implementations cap it). */
@@ -107,6 +112,8 @@ export interface ShellExecSpec {
   dshEnv?: DshEnvironment | undefined
   /** Resolved sandbox policy; ignored by executors that do not confine. */
   sandboxPolicy: SandboxExecutionPolicy | undefined
+  /** Wrapper-owned routing marker: the backend name selected by a selector executor's resolve(); other executors ignore it. */
+  shellBackend?: string | undefined
 }
 
 /** The outcome of one completed (or killed) foreground run. */
