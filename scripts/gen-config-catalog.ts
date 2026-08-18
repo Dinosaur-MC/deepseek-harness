@@ -491,8 +491,15 @@ function walkSchemaExpr(
     }
     // A chained refinement (`z.object({…}).default(…)` etc.): the keys live on
     // the call the chain hangs off — keep unwrapping toward it.
+    if (method === 'set' && call.arguments[0] && ts.isStringLiteral(call.arguments[0])) {
+      keys.push(call.arguments[0].text)
+    }
     const base = unwrapExpr(call.expression.expression)
     if (ts.isCallExpression(base)) { visit(base); return }
+    if (ts.isPropertyAccessExpression(base) && base.name.text === 'Config' && ts.isIdentifier(base.expression)) {
+      const imp = ctx.imports.get(base.expression.text)
+      if (imp && !imp.specifier.startsWith('.')) { composes.push(imp.specifier); return }
+    }
     violations.push(`${where}: schema call '${method}' is not object/intersect and hangs off no walkable base call.`)
   }
   visit(expr)
