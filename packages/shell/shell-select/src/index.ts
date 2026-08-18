@@ -195,7 +195,15 @@ export class ShellSelectExecutor extends ShellExecutor {
       if (factory === undefined) {
         throw new Error(`shell-select: unknown backend "${name}" (enabled: ${entry.backends.join(', ')})`)
       }
-      const fiber = this.ctx.plugin(() => {})
+      // Backends run real executor code against `subprocess`/`sandbox`/
+      // `sandboxPolicy`, so the child fiber must declare those injects: Cordis
+      // resolves a service only into fibers that list it (the walk throws
+      // `cannot get property X without inject` otherwise), and a bare function
+      // plugin would leave every real backend unable to spawn or confine.
+      const fiber = this.ctx.plugin({
+        inject: ['subprocess', 'sandbox', 'sandboxPolicy'],
+        apply: () => {},
+      })
       this.fibers.push(fiber)
       const backendCtx = fiber.ctx.isolate('shell', Symbol(name)).isolate('settings', Symbol(name))
       this.backends.set(name, factory(backendCtx, backendConfig(name, entry)))

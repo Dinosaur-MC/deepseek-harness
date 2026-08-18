@@ -458,12 +458,18 @@ importers:
       '@deepseek-ai/dsh-attachment-local':
         specifier: workspace:*
         version: link:../packages/attachment/attachment-local
+      '@deepseek-ai/dsh-bash-git':
+        specifier: workspace:*
+        version: link:../packages/shell/bash-git
       '@deepseek-ai/dsh-bash-local':
         specifier: workspace:*
         version: link:../packages/shell/bash-local
       '@deepseek-ai/dsh-bash-sandbox':
         specifier: workspace:*
         version: link:../packages/shell/bash-sandbox
+      '@deepseek-ai/dsh-bash-wsl':
+        specifier: workspace:*
+        version: link:../packages/shell/bash-wsl
       '@deepseek-ai/dsh-code-runtime-worker-thread':
         specifier: workspace:*
         version: link:../packages/code-runtime/code-runtime-worker-thread
@@ -611,6 +617,9 @@ importers:
       '@deepseek-ai/dsh-shell-env':
         specifier: workspace:*
         version: link:../packages/shell/shell-env
+      '@deepseek-ai/dsh-shell-select':
+        specifier: workspace:*
+        version: link:../packages/shell/shell-select
       '@deepseek-ai/dsh-skill':
         specifier: workspace:*
         version: link:../packages/skill/skill
